@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4efe5">
+  <title>全球棉价 · 7日行情</title>
+  <meta name="description" content="每日更新中国、美国、巴基斯坦和印度棉花价格及人民币参考价。">
+  <meta property="og:title" content="全球棉价 · 7日行情">
+  <meta property="og:description" content="四国棉花最新7个交易日价格趋势">
+  <meta property="og:image" content="{{ url_for('static', filename='avatar.png', _external=True) }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='avatar.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="eyebrow">COTTON MARKET PULSE</div>
+        <button class="info-button" id="open-method" aria-label="查看折算说明">i</button>
+      </div>
+      <h1>全球棉价<br><em>7日行情</em></h1>
+      <div class="hero-meta">
+        <span id="update-time">正在载入最新数据</span>
+        <span class="live"><i></i> 每日更新</span>
+      </div>
+    </header>
+
+    <section class="summary-strip" id="summary-strip" aria-label="四国最新人民币价格"></section>
+
+    <nav class="market-tabs" id="market-tabs" aria-label="选择国家"></nav>
+
+    <section id="market-view" class="market-view" aria-live="polite">
+      <div class="loading-card"><div></div><div></div><div></div></div>
+    </section>
+
+    <section class="compare-section">
+      <div class="section-heading">
+        <div><span class="section-kicker">COMPARISON</span><h2>四国人民币价</h2></div>
+        <span class="unit-pill">元 / 吨</span>
+      </div>
+      <div id="comparison" class="comparison"></div>
+    </section>
+
+    <footer>
+      <div class="source-note">原始报价来自各市场网站，汇率采用公开实时汇率。</div>
+      <div id="disclaimer"></div>
+      <div class="footer-mark">棉价观察 · Cotton Brief</div>
+    </footer>
+  </main>
+
+  <dialog id="method-dialog">
+    <div class="dialog-head"><div><span class="section-kicker">METHODOLOGY</span><h2>价格口径</h2></div><button id="close-method" aria-label="关闭">×</button></div>
+    <div class="method-list">
+      <article><b>中国 · 3128B</b><p>网页公布的中国棉花价格指数，原始单位即人民币元/吨。</p></article>
+      <article><b>美国 · 2号棉花</b><p>在美分/磅收盘价上加10美分后折算：<br><code>(报价+10) ÷ 100 × 2204.6226 × USD/CNY</code></p></article>
+      <article><b>巴基斯坦 · Ex-Gin</b><p>以37.324公斤为一Maund：<br><code>出厂价 ÷ 37.324 × 1000 × PKR/CNY</code></p></article>
+      <article><b>印度 · Shankar 6</b><p>使用网站公布的Rs/Quintal：<br><code>卢比/100kg × 10 × INR/CNY</code></p></article>
+    </div>
+    <p class="dialog-note">人民币折算为横向比较口径，不含关税、增值税、保险、港杂费等。美国栏目中的“到岸参考价”仅按你指定的加10美分规则计算。</p>
+  </dialog>
+
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

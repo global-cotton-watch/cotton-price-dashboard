@@ -1,0 +1,24 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      COTTON_DATABASE: /data/cotton.db
+      UPDATE_TOKEN: ${UPDATE_TOKEN:?请先在.env中设置UPDATE_TOKEN}
+    volumes:
+      - cotton_data:/data
+  updater:
+    build: .
+    restart: unless-stopped
+    command: ["python", "-m", "cotton_dashboard.scheduler"]
+    environment:
+      COTTON_DATABASE: /data/cotton.db
+      UPDATE_TIMEZONE: Asia/Shanghai
+      UPDATE_HOUR: "9"
+      UPDATE_MINUTE: "15"
+    volumes:
+      - cotton_data:/data
+volumes:
+  cotton_data:
