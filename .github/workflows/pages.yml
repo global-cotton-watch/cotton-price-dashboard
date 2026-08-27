@@ -41,10 +41,10 @@ jobs:
         env:
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_AUTH_CODE: ${{ secrets.SMTP_AUTH_CODE }}
-          MAIL_TO: gmw126@126.com
+          MAIL_TO: ${{ secrets.MAIL_TO }}
         run: |
-          if [ -z "$SMTP_USERNAME" ] || [ -z "$SMTP_AUTH_CODE" ]; then
-            echo "::warning::SMTP secrets are not configured; daily email skipped."
+          if [ -z "$SMTP_USERNAME" ] || [ -z "$SMTP_AUTH_CODE" ] || [ -z "$MAIL_TO" ]; then
+            echo "::warning::Email secrets are not configured; daily email skipped."
             exit 0
           fi
           python email_daily_update.py --send
