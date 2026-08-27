@@ -10,7 +10,7 @@ from email.utils import formataddr
 from pathlib import Path
 
 from cotton_dashboard.daily_article import build_daily_email
-from cotton_dashboard.daily_image import generate_daily_image
+from cotton_dashboard.daily_cover import generate_daily_cover
 
 
 def compose_message(article, sender: str, recipient: str, image_bytes: bytes) -> EmailMessage:
@@ -19,14 +19,12 @@ def compose_message(article, sender: str, recipient: str, image_bytes: bytes) ->
     message["From"] = formataddr(("全球棉价观察", sender))
     message["To"] = recipient
     message.set_content(article.plain)
-    image_html = '<p><img src="cid:daily-cotton-image" alt="每日棉价主题图" style="width:100%;max-width:900px"></p>'
-    message.add_alternative(article.html.replace("<h2>今日主题</h2>", image_html + "<h2>今日主题</h2>"), subtype="html")
-    message.get_payload()[-1].add_related(
+    message.add_alternative(article.html, subtype="html")
+    message.add_attachment(
         image_bytes,
         maintype="image",
-        subtype="png",
-        cid="<daily-cotton-image>",
-        filename="每日棉价主题图.png",
+        subtype="jpeg",
+        filename="每日棉价封面.jpg",
     )
     return message
 
@@ -41,7 +39,7 @@ def send(message_path: Path) -> str:
     port = int(os.environ.get("SMTP_PORT", "465"))
 
     with tempfile.TemporaryDirectory(prefix="cotton-daily-") as temp_dir:
-        image = generate_daily_image(payload, Path(temp_dir) / "每日棉价主题图.png")
+        image = generate_daily_cover(payload, Path(temp_dir) / "每日棉价封面.jpg")
         message = compose_message(article, username, recipient, image.path.read_bytes())
         with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
             smtp.login(username, auth_code)
@@ -53,15 +51,11 @@ def preview(message_path: Path, output: Path) -> str:
     payload = json.loads(message_path.read_text(encoding="utf-8"))
     article = build_daily_email(payload)
     output.mkdir(parents=True, exist_ok=True)
-    image_name = "每日棉价主题图.png"
-    generate_daily_image(payload, output / image_name)
-    image_html = f'<p><img src="{image_name}" alt="每日棉价主题图" style="width:100%;max-width:900px"></p>'
+    image_name = "每日棉价封面.jpg"
+    generate_daily_cover(payload, output / image_name)
     (output / "subject.txt").write_text(article.subject, encoding="utf-8")
     (output / "article.txt").write_text(article.plain, encoding="utf-8")
-    (output / "article.html").write_text(
-        article.html.replace("<h2>今日主题</h2>", image_html + "<h2>今日主题</h2>"),
-        encoding="utf-8",
-    )
+    (output / "article.html").write_text(article.html, encoding="utf-8")
     return article.subject
 
 

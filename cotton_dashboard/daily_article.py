@@ -125,14 +125,14 @@ def build_daily_email(payload: dict) -> DailyEmail:
             f"<td>{_direction(change)} {abs(change):.2f}%</td>"
             "</tr>"
         )
-    lines += ["", "完整7日走势：", SITE_URL, "", "说明：休市日使用最近一个有报价的交易日，并在正文标注报价日期。",
+    lines += ["", "点击底部「阅读原文」浏览详细内容", f"阅读原文链接：{SITE_URL}", "", "说明：休市日使用最近一个有报价的交易日，并在正文标注报价日期。",
               payload.get("disclaimer", "价格仅供市场参考，不构成交易建议。")]
 
     html = f"""<!doctype html><html><body style="margin:0;background:#f4efe5;color:#173f35;font-family:Arial,'Microsoft YaHei',sans-serif">
 <div style="max-width:680px;margin:auto;padding:24px"><h1 style="font-size:25px">{escape(subject)}</h1>
 <h2>今日主题</h2>{focus_card}
 <h2>四国最新报价</h2><table style="width:100%;border-collapse:collapse;background:#fff"><tr><th>市场</th><th>原始价</th><th>人民币参考</th><th>7日走势</th></tr>{''.join(rows)}</table>
-<p style="text-align:center;margin:28px"><a href="{SITE_URL}" style="background:#173f35;color:white;padding:12px 22px;text-decoration:none;border-radius:8px">打开四国棉价7日看板</a></p>
+<p style="text-align:center;margin:28px;font-weight:bold;color:#173f35">点击底部「阅读原文」浏览详细内容</p>
 <p style="font-size:12px;color:#65756f">说明：休市日使用最近一个有报价的交易日，并在正文标注报价日期。</p>
 <p style="font-size:12px;color:#65756f">{escape(payload.get('disclaimer', '价格仅供市场参考，不构成交易建议。'))}</p></div></body></html>"""
     return DailyEmail(subject=subject, plain="\n".join(lines), html=html)

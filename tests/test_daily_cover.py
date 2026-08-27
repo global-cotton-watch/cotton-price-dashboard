@@ -4,7 +4,7 @@ from email_daily_update import compose_message, preview, send
 from PIL import Image
 
 from cotton_dashboard.daily_article import build_daily_email
-from cotton_dashboard.daily_image import generate_daily_image
+from cotton_dashboard.daily_cover import generate_daily_cover
 
 
 def market(name, native_values, cny_values, unit):
@@ -43,19 +43,19 @@ def payload():
     }
 
 
-def test_generates_wechat_ready_portrait_png(tmp_path):
-    result = generate_daily_image(payload(), tmp_path / "daily-cotton.png")
+def test_generates_wechat_article_cover(tmp_path):
+    result = generate_daily_cover(payload(), tmp_path / "daily-cover.jpg")
     assert result.title == "巴基斯坦棉花高位回落"
     assert result.path.exists()
     with Image.open(result.path) as image:
-        assert image.format == "PNG"
-        assert image.size == (900, 1500)
+        assert image.format == "JPEG"
+        assert image.size == (900, 383)
         assert image.mode == "RGB"
-        assert image.getbbox() == (0, 0, 900, 1500)
+        assert image.getbbox() == (0, 0, 900, 383)
 
 
-def test_email_contains_inline_png_for_copying(tmp_path):
-    image = generate_daily_image(payload(), tmp_path / "daily-cotton.png")
+def test_email_contains_cover_as_downloadable_attachment(tmp_path):
+    image = generate_daily_cover(payload(), tmp_path / "daily-cover.jpg")
     article = build_daily_email(payload())
     message = compose_message(
         article,
@@ -63,15 +63,17 @@ def test_email_contains_inline_png_for_copying(tmp_path):
         "recipient@example.com",
         image.path.read_bytes(),
     )
-    png_parts = [part for part in message.walk() if part.get_content_type() == "image/png"]
-    assert len(png_parts) == 1
-    assert png_parts[0]["Content-ID"] == "<daily-cotton-image>"
-    assert png_parts[0].get_filename() == "每日棉价主题图.png"
+    image_parts = [part for part in message.walk() if part.get_content_type() == "image/jpeg"]
+    assert len(image_parts) == 1
+    assert image_parts[0]["Content-ID"] is None
+    assert image_parts[0].get_content_disposition() == "attachment"
+    assert image_parts[0].get_filename() == "每日棉价封面.jpg"
     html = next(part for part in message.walk() if part.get_content_type() == "text/html")
-    assert "cid:daily-cotton-image" in html.get_content()
+    assert "cid:" not in html.get_content()
+    assert "点击底部「阅读原文」浏览详细内容" in html.get_content()
 
 
-def test_send_delivers_generated_inline_image(tmp_path, monkeypatch):
+def test_send_delivers_generated_cover_attachment(tmp_path, monkeypatch):
     data_path = tmp_path / "prices.json"
     data_path.write_text(json.dumps(payload()), encoding="utf-8")
     delivered = []
@@ -98,13 +100,13 @@ def test_send_delivers_generated_inline_image(tmp_path, monkeypatch):
     monkeypatch.setattr("email_daily_update.smtplib.SMTP_SSL", FakeSMTP)
     send(data_path)
     assert len(delivered) == 1
-    assert any(part.get_content_type() == "image/png" for part in delivered[0].walk())
+    assert any(part.get_content_type() == "image/jpeg" for part in delivered[0].walk())
 
 
-def test_preview_writes_ready_to_upload_png(tmp_path):
+def test_preview_writes_ready_to_upload_cover(tmp_path):
     data_path = tmp_path / "prices.json"
     data_path.write_text(json.dumps(payload()), encoding="utf-8")
     output = tmp_path / "preview"
     preview(data_path, output)
-    assert (output / "每日棉价主题图.png").exists()
-    assert "每日棉价主题图.png" in (output / "article.html").read_text(encoding="utf-8")
+    assert (output / "每日棉价封面.jpg").exists()
+    assert "点击底部「阅读原文」浏览详细内容" in (output / "article.html").read_text(encoding="utf-8")
