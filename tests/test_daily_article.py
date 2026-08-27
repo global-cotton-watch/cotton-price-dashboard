@@ -21,18 +21,22 @@ def payload(pakistan_end=10100, india_end=20200):
     }
 
 
-def test_larger_pakistan_move_drives_subject():
+def test_subject_uses_pakistan_and_india_latest_prices():
     article = build_daily_email(payload(pakistan_end=10500, india_end=20200))
-    assert article.subject == "巴基斯坦棉价7日上涨5.00%｜四国棉价日报"
+    assert article.subject == "巴基斯坦/印度棉花昨日价格｜16,800 PKR/37.324kg / 55,800 Rs./Candy"
     assert "16,800.00 PKR/37.324kg" in article.plain
+    assert "55,800.00 Rs./Candy" in article.plain
+    assert "2026-08-26" in article.plain
     assert SITE_URL in article.plain
     assert "四国最新报价" in article.html
 
 
-def test_larger_india_drop_drives_subject():
-    article = build_daily_email(payload(pakistan_end=10100, india_end=19000))
-    assert article.subject == "印度棉价7日下跌5.00%｜四国棉价日报"
-    assert "55,800.00 Rs./Candy" in article.plain
+def test_missing_one_focus_market_is_shown_as_unavailable():
+    data = payload()
+    data["data"]["pakistan"] = []
+    article = build_daily_email(data)
+    assert "巴基斯坦/印度棉花昨日价格｜暂无报价 / 55,800 Rs./Candy" == article.subject
+    assert "巴基斯坦Ex-Gin：暂无报价" in article.plain
 
 
 def test_missing_focus_markets_is_rejected():
