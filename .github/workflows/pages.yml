@@ -34,6 +34,20 @@ jobs:
         run: python update_prices.py
       - name: Export static H5
         run: python export_static.py
+      - name: Generate daily WeChat article preview
+        run: python email_daily_update.py --preview daily-email
+      - name: Email daily article
+        if: github.event_name != 'push'
+        env:
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_AUTH_CODE: ${{ secrets.SMTP_AUTH_CODE }}
+          MAIL_TO: gmw126@126.com
+        run: |
+          if [ -z "$SMTP_USERNAME" ] || [ -z "$SMTP_AUTH_CODE" ]; then
+            echo "::warning::SMTP secrets are not configured; daily email skipped."
+            exit 0
+          fi
+          python email_daily_update.py --send
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact

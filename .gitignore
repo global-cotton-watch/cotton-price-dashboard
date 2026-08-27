@@ -6,3 +6,4 @@ data/*.db
 .env
 source_samples/
 site/
+daily-email/

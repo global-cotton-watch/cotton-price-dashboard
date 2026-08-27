@@ -50,6 +50,17 @@ python -m http.server 8080 --directory site
 
 访问 `http://127.0.0.1:8080`。GitHub仓库中需将 **Settings → Pages → Build and deployment → Source** 设置为 **GitHub Actions**。
 
+### 每日公众号文章邮件
+
+工作流每天更新网站后，会比较巴基斯坦和印度最近7个交易日的人民币参考价涨跌幅，选择绝对波动较大的市场生成标题和四国行情正文，并发送到 `gmw126@126.com`。个人公众号需由管理员复制邮件内容并确认发表。
+
+在仓库 **Settings → Secrets and variables → Actions** 中配置：
+
+- `SMTP_USERNAME`：已开启SMTP服务的126邮箱账号
+- `SMTP_AUTH_CODE`：126邮箱客户端授权码，不是邮箱登录密码
+
+授权码只保存在GitHub加密Secrets中，不能写入代码或配置文件。
+
 ## 微信公众号菜单接入
 
 1. 将服务部署到已备案、可通过 HTTPS 访问的域名，例如 `https://cotton.example.cn/`。
