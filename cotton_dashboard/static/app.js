@@ -31,13 +31,14 @@ function renderTabs(){
 function chartSvg(rows,color){
   if(!rows.length) return '';
   const values=rows.map(r=>r.cny_per_ton), min=Math.min(...values), max=Math.max(...values), span=Math.max(max-min,1);
-  const W=560,H=155,padX=13,padY=16;
-  const pts=values.map((v,i)=>({x:rows.length===1?W/2:padX+i*(W-padX*2)/(rows.length-1),y:padY+(max-v)/span*(H-padY*2)}));
+  const W=560,H=175,left=58,right=12,top=20,bottom=12,plotW=W-left-right,plotH=H-top-bottom;
+  const pts=values.map((v,i)=>({x:rows.length===1?left+plotW/2:left+i*plotW/(rows.length-1),y:top+(max-v)/span*plotH}));
   const line=pts.map((p,i)=>`${i?'L':'M'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-  const area=`${line} L ${pts[pts.length-1].x} ${H} L ${pts[0].x} ${H} Z`;
-  const grid=[.2,.5,.8].map(f=>`<line class="grid-line" x1="0" y1="${H*f}" x2="${W}" y2="${H*f}"/>`).join('');
+  const area=`${line} L ${pts[pts.length-1].x} ${H-bottom} L ${pts[0].x} ${H-bottom} Z`;
+  const ticks=[max,(max+min)/2,min];
+  const grid=ticks.map((value,index)=>{const y=top+index*plotH/2;return `<line class="grid-line" x1="${left}" y1="${y}" x2="${W-right}" y2="${y}"/><text class="y-axis-label" x="${left-8}" y="${y+3}" text-anchor="end">${money(value)}</text>`;}).join('');
   const dots=pts.map((p,i)=>`<circle class="chart-dot" cx="${p.x}" cy="${p.y}" r="${i===pts.length-1?4:2.8}"/>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="--market-color:${color}">${grid}<path class="trend-area" d="${area}"/><path class="trend-line" d="${line}"/>${dots}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="--market-color:${color}"><text class="axis-unit" x="2" y="11">元/吨</text>${grid}<path class="trend-area" d="${area}"/><path class="trend-line" d="${line}"/>${dots}</svg>`;
 }
 function renderMarket(){
   const code=state.active, meta=state.payload.markets[code], rows=state.payload.data[code]||[], p=latest(rows), delta=change(rows);

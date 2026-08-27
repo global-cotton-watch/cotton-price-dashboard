@@ -19,6 +19,14 @@ class DailyEmail:
     html: str
 
 
+@dataclass(frozen=True)
+class Topic:
+    market: str
+    phrase: str
+    score: float
+    daily_change: float
+
+
 def _change(rows: list[dict]) -> float:
     if len(rows) < 2 or not rows[0].get("cny_per_ton"):
         return 0.0
@@ -39,39 +47,69 @@ def _price(row: dict) -> str:
 
 
 def _headline_price(rows: list[dict]) -> str:
-    if not rows or rows[-1].get("native_price") is None:
-        return "暂无报价"
     latest = rows[-1]
     return f"{latest['native_price']:,.0f} {latest.get('native_unit', '')}".strip()
 
 
+def _topic_for(market: str, rows: list[dict]) -> Topic | None:
+    if not rows:
+        return None
+    values = [row["native_price"] for row in rows]
+    if len(values) < 2 or not values[-2]:
+        return Topic(market, "最新报价", 0.0, 0.0)
+    previous, current = values[-2:]
+    daily = (current / previous - 1) * 100
+    span = max(values) - min(values)
+    high = max(values) - span * 0.15
+    low = min(values) + span * 0.15
+    if len(values) >= 3 and daily < -0.005 and previous >= high:
+        phrase, bonus = "高位回落", 2.0
+    elif len(values) >= 3 and daily > 0.005 and previous <= low:
+        phrase, bonus = "低位反弹", 2.0
+    elif daily > 0.005 and current == max(values):
+        phrase, bonus = "升至7日高位", 1.0
+    elif daily < -0.005 and current == min(values):
+        phrase, bonus = "降至7日低位", 1.0
+    elif len(values) >= 3 and values[-3] < previous < current:
+        phrase, bonus = "连续上涨", 0.7
+    elif len(values) >= 3 and values[-3] > previous > current:
+        phrase, bonus = "连续回落", 0.7
+    elif abs(daily) <= 0.1:
+        phrase, bonus = "窄幅震荡", 0.0
+    else:
+        phrase, bonus = ("小幅上涨", 0.0) if daily > 0 else ("小幅回落", 0.0)
+    return Topic(market, phrase, abs(daily) + bonus, daily)
+
+
+def _select_topic(data: dict) -> Topic:
+    topics = [_topic_for(key, data.get(key, [])) for key in ("pakistan", "india")]
+    available = [topic for topic in topics if topic is not None]
+    if not available:
+        raise ValueError("巴基斯坦和印度均无可用数据")
+    return max(available, key=lambda topic: topic.score)
+
+
 def build_daily_email(payload: dict) -> DailyEmail:
     data = payload["data"]
-    pakistan = data.get("pakistan", [])
-    india = data.get("india", [])
-    if not pakistan and not india:
-        raise ValueError("巴基斯坦和印度均无可用数据")
-    subject = f"巴基斯坦/印度棉花昨日价格｜{_headline_price(pakistan)} / {_headline_price(india)}"
+    topic = _select_topic(data)
+    focus_rows = data[topic.market]
+    latest_focus = focus_rows[-1]
+    focus_name = "巴基斯坦" if topic.market == "pakistan" else "印度"
+    topic_title = f"{focus_name}棉花{topic.phrase}"
+    subject = f"{topic_title}｜昨日{_headline_price(focus_rows)}"
 
-    lines = [subject, "", "昨日重点价格"]
-    focus_cards = []
-    for key, rows_for_market in (("pakistan", pakistan), ("india", india)):
-        if not rows_for_market:
-            lines.append(f"- {LABELS[key]}：暂无报价")
-            continue
-        latest = rows_for_market[-1]
-        lines.append(
-            f"- {LABELS[key]}（{latest['date']}）：{_price(latest)}；"
-            f"人民币参考 {latest['cny_per_ton']:,.0f} 元/吨"
-        )
-        focus_cards.append(
-            f"<div style=\"background:#fff;padding:16px;border-radius:12px;margin-bottom:12px\">"
-            f"<h2 style=\"margin-top:0\">{escape(LABELS[key])}</h2>"
-            f"<p>报价日期：{escape(latest['date'])}</p>"
-            f"<p>昨日价格：<b>{escape(_price(latest))}</b></p>"
-            f"<p>人民币参考：<b>{latest['cny_per_ton']:,.0f} 元/吨</b></p></div>"
-        )
-    lines += ["", "四国最新报价"]
+    lines = [subject, "", f"本期主题：{topic_title}",
+             f"报价日期：{latest_focus['date']}", f"昨日价格：{_price(latest_focus)}",
+             f"人民币参考：{latest_focus['cny_per_ton']:,.0f} 元/吨",
+             f"较上一交易日：{_direction(topic.daily_change)} {abs(topic.daily_change):.2f}%", "", "四国最新报价"]
+    focus_card = (
+        f"<div style=\"background:#fff;padding:16px;border-radius:12px;margin-bottom:12px\">"
+        f"<h2 style=\"margin-top:0\">{escape(topic_title)}</h2>"
+        f"<p>报价日期：{escape(latest_focus['date'])}</p>"
+        f"<p>昨日价格：<b>{escape(_price(latest_focus))}</b></p>"
+        f"<p>人民币参考：<b>{latest_focus['cny_per_ton']:,.0f} 元/吨</b></p>"
+        f"<p>较上一交易日：<b>{_direction(topic.daily_change)} {abs(topic.daily_change):.2f}%</b></p></div>"
+    )
     rows = []
     for key in ("china", "usa", "pakistan", "india"):
         if not data.get(key):
@@ -92,7 +130,7 @@ def build_daily_email(payload: dict) -> DailyEmail:
 
     html = f"""<!doctype html><html><body style="margin:0;background:#f4efe5;color:#173f35;font-family:Arial,'Microsoft YaHei',sans-serif">
 <div style="max-width:680px;margin:auto;padding:24px"><h1 style="font-size:25px">{escape(subject)}</h1>
-<h2>昨日重点价格</h2>{''.join(focus_cards)}
+<h2>今日主题</h2>{focus_card}
 <h2>四国最新报价</h2><table style="width:100%;border-collapse:collapse;background:#fff"><tr><th>市场</th><th>原始价</th><th>人民币参考</th><th>7日走势</th></tr>{''.join(rows)}</table>
 <p style="text-align:center;margin:28px"><a href="{SITE_URL}" style="background:#173f35;color:white;padding:12px 22px;text-decoration:none;border-radius:8px">打开四国棉价7日看板</a></p>
 <p style="font-size:12px;color:#65756f">说明：休市日使用最近一个有报价的交易日，并在正文标注报价日期。</p>
