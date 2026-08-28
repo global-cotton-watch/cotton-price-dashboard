@@ -7,3 +7,5 @@ data/*.db
 source_samples/
 site/
 daily-email/
+weekly-email/
+report-email/
