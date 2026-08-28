@@ -10,10 +10,12 @@ from cotton_dashboard.scrapers import (
 FX = {"date": "2026-08-26", "usd_cny": 7.0, "pkr_cny": 0.025, "inr_cny": 0.08}
 
 
-def test_us_landed_conversion_adds_ten_cents():
+def test_us_conversion_uses_the_market_quote_without_premium():
     point = _us_point("2026-08-25", 70.0, FX, "test", "https://example.com", False)
-    assert point["metadata"]["landed_cents_lb"] == 80.0
-    assert point["cny_per_ton"] == pytest.approx(0.8 * 2204.62262185 * 7.0, abs=0.01)
+    assert "landed_cents_lb" not in point["metadata"]
+    assert "landed_premium_cents" not in point["metadata"]
+    assert point["metadata"]["formula"] == "美分价/100 × 2204.6226 × USD/CNY"
+    assert point["cny_per_ton"] == pytest.approx(0.7 * 2204.62262185 * 7.0, abs=0.01)
 
 
 def test_china_api_signature_matches_official_frontend_scheme():

@@ -54,11 +54,11 @@
     <div class="dialog-head"><div><span class="section-kicker">METHODOLOGY</span><h2>价格口径</h2></div><button id="close-method" aria-label="关闭">×</button></div>
     <div class="method-list">
       <article><b>中国 · 3128B</b><p>网页公布的中国棉花价格指数，原始单位即人民币元/吨。</p></article>
-      <article><b>美国 · 2号棉花</b><p>在美分/磅收盘价上加10美分后折算：<br><code>(报价+10) ÷ 100 × 2204.6226 × USD/CNY</code></p></article>
+      <article><b>美国 · 2号棉花</b><p>按美分/磅收盘价直接折算：<br><code>报价 ÷ 100 × 2204.6226 × USD/CNY</code></p></article>
       <article><b>巴基斯坦 · Ex-Gin</b><p>以37.324公斤为一Maund：<br><code>出厂价 ÷ 37.324 × 1000 × PKR/CNY</code></p></article>
       <article><b>印度 · Shankar 6</b><p>使用网站公布的Rs/Quintal：<br><code>卢比/100kg × 10 × INR/CNY</code></p></article>
     </div>
-    <p class="dialog-note">人民币折算为横向比较口径，不含关税、增值税、保险、港杂费等。美国栏目中的“到岸参考价”仅按你指定的加10美分规则计算。</p>
+    <p class="dialog-note">人民币折算为横向比较口径，不含关税、增值税、保险、港杂费等；美国价格不再额外增加升贴水。</p>
   </dialog>
 
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>

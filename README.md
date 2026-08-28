@@ -7,7 +7,7 @@
 | 市场 | 品种/口径 | 原始数据 | 人民币换算 |
 |---|---|---|---|
 | 中国 | CC Index 3128B | 中国棉花协会数据中心API，元/吨；旧站首页备用校验 | 原值 |
-| 美国 | 美国棉花 2 号 | 优先 Investing.com；依次尝试官方接口、只读渲染；受限时使用 Yahoo `CT=F` 备用 | `(报价+10)/100 × 2204.6226 × USD/CNY` |
+| 美国 | 美国棉花 2 号 | 优先 Investing.com；依次尝试官方接口、只读渲染；受限时使用 Yahoo `CT=F` 备用 | `报价/100 × 2204.6226 × USD/CNY` |
 | 巴基斯坦 | Karachi Ex-Gin | PKR/37.324kg | `出厂价/37.324 × 1000 × PKR/CNY` |
 | 印度 | Shankar 6 | Gujcot Rs/Candy；换算使用网站同步公布的 Rs/Quintal | `Rs/Quintal × 10 × INR/CNY` |
 

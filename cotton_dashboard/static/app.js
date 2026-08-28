@@ -45,11 +45,10 @@ function renderMarket(){
   if(!p){$('#market-view').innerHTML='<div class="error-box"><b>尚无该市场数据</b><span>请运行每日更新任务后刷新。</span></div>';return;}
   const cls=delta.value>0?'up':delta.value<0?'down':'flat', arrow=delta.value>0?'▲':delta.value<0?'▼':'—';
   const source=p.source_name, note=p.metadata?.fallback?'Investing.com 当前拒绝服务器访问，已自动切换备用行情源。':'';
-  const extra=code==='usa'?`<span>加10美分后 <b>${native(p.metadata.landed_cents_lb)} 美分/磅</b></span>`:'';
   $('#market-view').innerHTML=`<article class="price-card" style="--market-color:${meta.color}">
     <div class="card-top"><div class="flag-name"><span class="flag">${flags[code]}</span><div><h2>${meta.name}</h2><p>${meta.grade} · 最近${rows.length}个交易日</p></div></div><span class="change ${cls}">${arrow} ${Math.abs(delta.pct).toFixed(2)}%</span></div>
     <div class="main-price"><strong>${money(p.cny_per_ton)}</strong><span>人民币元 / 吨</span></div>
-    <div class="native-line"><span>${nativeLabels[code]} <b>${native(p.native_price)} ${escapeHtml(p.native_unit)}</b></span>${extra}</div>
+    <div class="native-line"><span>${nativeLabels[code]} <b>${native(p.native_price)} ${escapeHtml(p.native_unit)}</b></span></div>
     <div class="chart-wrap">${chartSvg(rows,meta.color)}</div><div class="date-row">${rows.map(r=>`<span>${shortDate(r.date)}</span>`).join('')}</div>
     ${note?`<p class="warning">${note}</p>`:''}
     <div class="source-row"><span>汇率日期 ${p.metadata?.fx_date||p.date}</span><a href="${escapeHtml(p.source_url)}" target="_blank" rel="noopener">${escapeHtml(source)} ↗</a></div>

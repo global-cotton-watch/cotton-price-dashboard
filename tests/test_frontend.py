@@ -25,3 +25,13 @@ if (svg.includes('x1=\"0\"')) throw new Error('grid must leave room for y-axis')
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_usa_copy_describes_direct_quote_conversion_without_premium():
+    app_js = Path("cotton_dashboard/static/app.js").read_text(encoding="utf-8")
+    index_html = Path("cotton_dashboard/templates/index.html").read_text(encoding="utf-8")
+    combined = app_js + index_html
+    assert "加10美分" not in combined
+    assert "报价+10" not in combined
+    assert "美分/磅收盘价直接折算" in index_html
+    assert "报价 ÷ 100 × 2204.6226 × USD/CNY" in index_html

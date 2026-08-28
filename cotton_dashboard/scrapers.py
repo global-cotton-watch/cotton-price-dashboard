@@ -219,18 +219,16 @@ def _scrape_us_investing_reader(session: requests.Session, fx: dict) -> list[dic
 
 
 def _us_point(day: str, cents: float, fx: dict, source_name: str, source_url: str, fallback: bool) -> dict:
-    landed_cents = cents + 10.0
-    cny_per_ton = landed_cents / 100.0 * POUNDS_PER_TONNE * float(fx["usd_cny"])
+    cny_per_ton = cents / 100.0 * POUNDS_PER_TONNE * float(fx["usd_cny"])
     return {
         "market": "usa", "date": day, "native_price": cents,
         "native_unit": "美分/磅", "cny_per_ton": round(cny_per_ton, 2),
         "fx_rate": fx["usd_cny"], "source_name": source_name,
         "source_url": source_url, "fetched_at": _fetched_at(),
         "metadata": {
-            "grade": "美国棉花2号", "landed_premium_cents": 10,
-            "landed_cents_lb": round(landed_cents, 2), "fx_date": fx["date"],
+            "grade": "美国棉花2号", "fx_date": fx["date"],
             "fallback": fallback,
-            "formula": "(美分价+10)/100 × 2204.6226 × USD/CNY",
+            "formula": "美分价/100 × 2204.6226 × USD/CNY",
         },
     }
 
