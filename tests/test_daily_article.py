@@ -1,3 +1,5 @@
+from datetime import date
+
 from cotton_dashboard.daily_article import SITE_URL, build_daily_email
 
 
@@ -42,8 +44,8 @@ def test_pakistan_high_pullback_drives_subject():
     data["data"]["india"] = trend_rows(
         "india", [13700, 13720, 13740, 13750], [68000, 68100, 68200, 68250], "INR/Candy"
     )
-    article = build_daily_email(data)
-    assert article.subject == "巴基斯坦棉花高位回落｜昨日18,800 PKR/37.324kg"
+    article = build_daily_email(data, as_of=date(2026, 8, 24))
+    assert article.subject == "昨日巴基斯坦棉花高位回落｜18,800 PKR/37.324kg"
     assert "本期主题：巴基斯坦棉花高位回落" in article.plain
     assert "18,800.00 PKR/37.324kg" in article.plain
     assert SITE_URL in article.plain
@@ -58,8 +60,8 @@ def test_india_low_rebound_drives_subject():
     data["data"]["india"] = trend_rows(
         "india", [14000, 13200, 12800, 13300], [70000, 66000, 64000, 66500], "INR/Candy"
     )
-    article = build_daily_email(data)
-    assert article.subject == "印度棉花低位反弹｜昨日66,500 INR/Candy"
+    article = build_daily_email(data, as_of=date(2026, 8, 24))
+    assert article.subject == "昨日印度棉花低位反弹｜66,500 INR/Candy"
 
 
 def test_topic_uses_native_market_prices_not_fx_conversion():
@@ -70,15 +72,15 @@ def test_topic_uses_native_market_prices_not_fx_conversion():
     data["data"]["india"] = trend_rows(
         "india", [13700, 13710, 13720], [68000, 68010, 68020], "INR/Candy"
     )
-    article = build_daily_email(data)
-    assert article.subject == "巴基斯坦棉花高位回落｜昨日18,500 PKR/37.324kg"
+    article = build_daily_email(data, as_of=date(2026, 8, 23))
+    assert article.subject == "昨日巴基斯坦棉花高位回落｜18,500 PKR/37.324kg"
 
 
 def test_missing_one_focus_market_uses_available_market():
     data = payload()
     data["data"]["pakistan"] = []
-    article = build_daily_email(data)
-    assert article.subject.startswith("印度棉花")
+    article = build_daily_email(data, as_of=date(2026, 8, 26))
+    assert article.subject.startswith("今日印度棉花")
 
 
 def test_missing_focus_markets_is_rejected():
@@ -91,3 +93,17 @@ def test_missing_focus_markets_is_rejected():
         assert "无可用数据" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_subject_says_today_when_focus_quote_is_from_beijing_today():
+    data = payload()
+    article = build_daily_email(data, as_of=date(2026, 8, 26))
+    assert article.subject.startswith("今日")
+    assert "今日价格" in article.plain
+
+
+def test_subject_says_yesterday_when_focus_quote_is_one_day_old():
+    data = payload()
+    article = build_daily_email(data, as_of=date(2026, 8, 27))
+    assert article.subject.startswith("昨日")
+    assert "昨日价格" in article.plain

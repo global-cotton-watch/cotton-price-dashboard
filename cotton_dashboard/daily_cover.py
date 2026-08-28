@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageDraw, ImageFont
 
-from cotton_dashboard.daily_article import _direction, _select_topic
+from cotton_dashboard.daily_article import _direction, _report_day_label, _select_topic
 
 WIDTH = 900
 HEIGHT = 383
@@ -21,6 +23,7 @@ LINE = "#d9d2c5"
 @dataclass(frozen=True)
 class DailyCover:
     title: str
+    price_label: str
     path: Path
 
 
@@ -68,12 +71,14 @@ def _draw_trend(draw: ImageDraw.ImageDraw, rows: list[dict], color: str) -> None
         draw.ellipse((x - 8, y - 8, x + 8, y + 8), fill=PAPER, outline=color, width=4)
 
 
-def generate_daily_cover(payload: dict, output: Path) -> DailyCover:
+def generate_daily_cover(payload: dict, output: Path, as_of: date | None = None) -> DailyCover:
     topic = _select_topic(payload["data"])
     rows = payload["data"][topic.market]
     latest = rows[-1]
     market_name = "巴基斯坦" if topic.market == "pakistan" else "印度"
     title = f"{market_name}棉花{topic.phrase}"
+    report_day = as_of or datetime.now(ZoneInfo("Asia/Shanghai")).date()
+    day_label = _report_day_label(latest["date"], report_day)
     accent = RED if topic.daily_change > 0 else GREEN
 
     image = Image.new("RGB", (WIDTH, HEIGHT), PAPER)
@@ -83,7 +88,7 @@ def generate_daily_cover(payload: dict, output: Path) -> DailyCover:
     draw.line((54, 75, 846, 75), fill=INK, width=2)
     draw.text((54, 112), title, font=_fit_font(draw, title, 535, 62), fill=INK)
     draw.text((58, 211), f"{latest['date']}  ·  每日主题", font=_font(24), fill=MUTED)
-    price = f"昨日 {latest['native_price']:,.0f} {latest.get('native_unit', '')}"
+    price = f"{day_label} {latest['native_price']:,.0f} {latest.get('native_unit', '')}"
     draw.text((58, 264), price, font=_fit_font(draw, price, 530, 31), fill=INK)
     change = f"{_direction(topic.daily_change)} {abs(topic.daily_change):.2f}%"
     draw.text((58, 316), change, font=_font(25, True), fill=accent)
@@ -91,4 +96,4 @@ def generate_daily_cover(payload: dict, output: Path) -> DailyCover:
 
     output.parent.mkdir(parents=True, exist_ok=True)
     image.save(output, format="JPEG", quality=92, optimize=True, progressive=False, subsampling=0)
-    return DailyCover(title=title, path=output)
+    return DailyCover(title=title, price_label=price, path=output)

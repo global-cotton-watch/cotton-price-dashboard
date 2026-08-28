@@ -1,4 +1,5 @@
 import json
+from datetime import date
 
 from email_daily_update import compose_message, preview, send
 from PIL import Image
@@ -44,8 +45,9 @@ def payload():
 
 
 def test_generates_wechat_article_cover(tmp_path):
-    result = generate_daily_cover(payload(), tmp_path / "daily-cover.jpg")
+    result = generate_daily_cover(payload(), tmp_path / "daily-cover.jpg", as_of=date(2026, 8, 23))
     assert result.title == "巴基斯坦棉花高位回落"
+    assert result.price_label.startswith("今日 ")
     assert result.path.exists()
     with Image.open(result.path) as image:
         assert image.format == "JPEG"

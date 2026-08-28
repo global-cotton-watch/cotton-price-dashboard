@@ -4,9 +4,17 @@ on:
   push:
     branches: [main]
   schedule:
-    # 09:30 Asia/Shanghai every day
-    - cron: "30 1 * * *"
+    # Monday-Friday 21:00 Asia/Shanghai: daily report
+    - cron: "0 13 * * 1-5"
+    # Saturday 09:00 Asia/Shanghai: weekly report; Sunday rests
+    - cron: "0 1 * * 6"
   workflow_dispatch:
+    inputs:
+      report_type:
+        description: Report type for a manual run
+        type: choice
+        options: [daily, weekly]
+        default: daily
 
 permissions:
   contents: read
@@ -32,13 +40,24 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Select report type
+        id: report
+        env:
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+          MANUAL_REPORT_TYPE: ${{ inputs.report_type }}
+        run: |
+          if [ "$EVENT_SCHEDULE" = "0 1 * * 6" ] || [ "$MANUAL_REPORT_TYPE" = "weekly" ]; then
+            echo "type=weekly" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=daily" >> "$GITHUB_OUTPUT"
+          fi
       - name: Fetch latest prices
         run: python update_prices.py
       - name: Export static H5
         run: python export_static.py
-      - name: Generate daily WeChat article preview
-        run: python email_daily_update.py --preview daily-email
-      - name: Email daily article
+      - name: Generate WeChat report preview
+        run: python email_daily_update.py --report-type "${{ steps.report.outputs.type }}" --preview report-email
+      - name: Email report
         if: github.event_name != 'push'
         env:
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
@@ -46,10 +65,10 @@ jobs:
           MAIL_TO: ${{ secrets.MAIL_TO }}
         run: |
           if [ -z "$SMTP_USERNAME" ] || [ -z "$SMTP_AUTH_CODE" ] || [ -z "$MAIL_TO" ]; then
-            echo "::warning::Email secrets are not configured; daily email skipped."
+            echo "::warning::Email secrets are not configured; report email skipped."
             exit 0
           fi
-          python email_daily_update.py --send
+          python email_daily_update.py --report-type "${{ steps.report.outputs.type }}" --send
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
