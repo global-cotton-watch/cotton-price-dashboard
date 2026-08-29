@@ -12,6 +12,7 @@ from pathlib import Path
 
 from cotton_dashboard.daily_article import build_daily_email, build_weekly_email
 from cotton_dashboard.daily_cover import generate_daily_cover
+from cotton_dashboard.weekly_cover import generate_weekly_cover
 
 
 def build_report(payload: dict, report_type: str, as_of: date | None = None):
@@ -22,7 +23,13 @@ def build_report(payload: dict, report_type: str, as_of: date | None = None):
     raise ValueError(f"未知报告类型：{report_type}")
 
 
-def compose_message(article, sender: str, recipient: str, image_bytes: bytes | None) -> EmailMessage:
+def compose_message(
+    article,
+    sender: str,
+    recipient: str,
+    image_bytes: bytes | None,
+    image_filename: str = "每日棉价封面.jpg",
+) -> EmailMessage:
     message = EmailMessage()
     message["Subject"] = article.subject
     message["From"] = formataddr(("全球棉价观察", sender))
@@ -34,7 +41,7 @@ def compose_message(article, sender: str, recipient: str, image_bytes: bytes | N
             image_bytes,
             maintype="image",
             subtype="jpeg",
-            filename="每日棉价封面.jpg",
+            filename=image_filename,
         )
     return message
 
@@ -49,11 +56,13 @@ def send(message_path: Path, report_type: str = "daily", as_of: date | None = No
     port = int(os.environ.get("SMTP_PORT", "465"))
 
     with tempfile.TemporaryDirectory(prefix="cotton-daily-") as temp_dir:
-        image_bytes = None
+        image_filename = "每日棉价封面.jpg"
         if report_type == "daily":
-            image = generate_daily_cover(payload, Path(temp_dir) / "每日棉价封面.jpg", as_of=as_of)
-            image_bytes = image.path.read_bytes()
-        message = compose_message(article, username, recipient, image_bytes)
+            image = generate_daily_cover(payload, Path(temp_dir) / image_filename, as_of=as_of)
+        else:
+            image_filename = "每周棉价封面.jpg"
+            image = generate_weekly_cover(payload, Path(temp_dir) / image_filename, as_of=as_of)
+        message = compose_message(article, username, recipient, image.path.read_bytes(), image_filename)
         with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
             smtp.login(username, auth_code)
             smtp.send_message(message)
@@ -66,6 +75,8 @@ def preview(message_path: Path, output: Path, report_type: str = "daily", as_of:
     output.mkdir(parents=True, exist_ok=True)
     if report_type == "daily":
         generate_daily_cover(payload, output / "每日棉价封面.jpg", as_of=as_of)
+    else:
+        generate_weekly_cover(payload, output / "每周棉价封面.jpg", as_of=as_of)
     (output / "subject.txt").write_text(article.subject, encoding="utf-8")
     (output / "article.txt").write_text(article.plain, encoding="utf-8")
     (output / "article.html").write_text(article.html, encoding="utf-8")

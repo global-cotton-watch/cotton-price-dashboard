@@ -2,7 +2,9 @@ import json
 from datetime import date
 
 from cotton_dashboard.daily_article import build_weekly_email
-from email_daily_update import build_report, compose_message, send
+from cotton_dashboard.weekly_cover import generate_weekly_cover
+from email_daily_update import build_report, preview, send
+from PIL import Image
 
 
 def weekly_rows(market, values, cny_values, unit):
@@ -61,19 +63,23 @@ def test_email_builder_selects_weekly_report():
     assert article.subject.startswith("上周棉价回顾｜")
 
 
-def test_weekly_email_does_not_attach_a_daily_cover():
+def test_generates_wechat_weekly_cover(tmp_path):
     payload = {
         "data": {
             "pakistan": weekly_rows("pakistan", [18000, 18800], [11800, 12200], "PKR/37.324kg"),
             "india": weekly_rows("india", [68000, 68200], [13500, 13540], "INR/Candy"),
         }
     }
-    article = build_report(payload, "weekly", as_of=date(2026, 8, 29))
-    message = compose_message(article, "sender@example.com", "recipient@example.com", None)
-    assert not any(part.get_content_maintype() == "image" for part in message.walk())
+    result = generate_weekly_cover(payload, tmp_path / "weekly-cover.jpg", as_of=date(2026, 8, 29))
+    assert result.title == "上周棉价回顾"
+    assert result.period == "8月24日—8月28日"
+    with Image.open(result.path) as image:
+        assert image.format == "JPEG"
+        assert image.size == (900, 383)
+        assert image.mode == "RGB"
 
 
-def test_send_delivers_weekly_report_without_daily_cover(tmp_path, monkeypatch):
+def test_send_delivers_weekly_cover_attachment(tmp_path, monkeypatch):
     payload = {
         "data": {
             "pakistan": weekly_rows("pakistan", [18000, 18800], [11800, 12200], "PKR/37.324kg"),
@@ -106,4 +112,21 @@ def test_send_delivers_weekly_report_without_daily_cover(tmp_path, monkeypatch):
     monkeypatch.setattr("email_daily_update.smtplib.SMTP_SSL", FakeSMTP)
     send(data_path, report_type="weekly", as_of=date(2026, 8, 29))
     assert delivered[0]["Subject"].startswith("上周棉价回顾｜")
-    assert not any(part.get_content_maintype() == "image" for part in delivered[0].walk())
+    image_parts = [part for part in delivered[0].walk() if part.get_content_type() == "image/jpeg"]
+    assert len(image_parts) == 1
+    assert image_parts[0].get_content_disposition() == "attachment"
+    assert image_parts[0].get_filename() == "每周棉价封面.jpg"
+
+
+def test_weekly_preview_writes_ready_to_upload_cover(tmp_path):
+    payload = {
+        "data": {
+            "pakistan": weekly_rows("pakistan", [18000, 18800], [11800, 12200], "PKR/37.324kg"),
+            "india": weekly_rows("india", [68000, 68200], [13500, 13540], "INR/Candy"),
+        }
+    }
+    data_path = tmp_path / "prices.json"
+    data_path.write_text(json.dumps(payload), encoding="utf-8")
+    output = tmp_path / "preview"
+    preview(data_path, output, report_type="weekly", as_of=date(2026, 8, 29))
+    assert (output / "每周棉价封面.jpg").exists()
