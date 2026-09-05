@@ -9,10 +9,11 @@ const native = (value) => new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2
 function latest(rows){ return rows && rows.length ? rows[rows.length - 1] : null; }
 function change(rows){
   if(!rows || rows.length < 2) return {value:0, pct:0};
-  const a=rows[rows.length-2].cny_per_ton, b=rows[rows.length-1].cny_per_ton;
+  const a=rows[rows.length-2].native_price, b=rows[rows.length-1].native_price;
   return {value:b-a,pct:a ? (b-a)/a*100 : 0};
 }
 function escapeHtml(text){const d=document.createElement('div');d.textContent=text;return d.innerHTML;}
+function escapeText(text){return String(text).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}
 function shortDate(value){const [,m,d]=value.split('-');return `${m}/${d}`;}
 function formatTime(value){
   if(!value) return '等待首次数据更新';
@@ -28,30 +29,29 @@ function renderTabs(){
   $('#market-tabs').innerHTML=order.map(code=>`<button class="market-tab ${code===state.active?'active':''}" data-code="${code}">${state.payload.markets[code].short}</button>`).join('');
   document.querySelectorAll('.market-tab').forEach(btn=>btn.addEventListener('click',()=>{state.active=btn.dataset.code;renderTabs();renderMarket();}));
 }
-function chartSvg(rows,color){
+function chartSvg(rows,color,unit){
   if(!rows.length) return '';
-  const values=rows.map(r=>r.cny_per_ton), min=Math.min(...values), max=Math.max(...values), span=Math.max(max-min,1);
+  const values=rows.map(r=>r.native_price), min=Math.min(...values), max=Math.max(...values), span=Math.max(max-min,1);
   const W=560,H=175,left=58,right=12,top=20,bottom=12,plotW=W-left-right,plotH=H-top-bottom;
   const pts=values.map((v,i)=>({x:rows.length===1?left+plotW/2:left+i*plotW/(rows.length-1),y:top+(max-v)/span*plotH}));
   const line=pts.map((p,i)=>`${i?'L':'M'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
   const area=`${line} L ${pts[pts.length-1].x} ${H-bottom} L ${pts[0].x} ${H-bottom} Z`;
   const ticks=[max,(max+min)/2,min];
-  const grid=ticks.map((value,index)=>{const y=top+index*plotH/2;return `<line class="grid-line" x1="${left}" y1="${y}" x2="${W-right}" y2="${y}"/><text class="y-axis-label" x="${left-8}" y="${y+3}" text-anchor="end">${money(value)}</text>`;}).join('');
+  const tickFormat=new Intl.NumberFormat('zh-CN',{minimumFractionDigits:unit==='美分/磅'?2:0,maximumFractionDigits:unit==='美分/磅'?2:0});
+  const grid=ticks.map((value,index)=>{const y=top+index*plotH/2;return `<line class="grid-line" x1="${left}" y1="${y}" x2="${W-right}" y2="${y}"/><text class="y-axis-label" x="${left-8}" y="${y+3}" text-anchor="end">${tickFormat.format(value)}</text>`;}).join('');
   const dots=pts.map((p,i)=>`<circle class="chart-dot" cx="${p.x}" cy="${p.y}" r="${i===pts.length-1?4:2.8}"/>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="--market-color:${color}"><text class="axis-unit" x="2" y="11">元/吨</text>${grid}<path class="trend-area" d="${area}"/><path class="trend-line" d="${line}"/>${dots}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="--market-color:${color}"><text class="axis-unit" x="2" y="11">${escapeText(unit)}</text>${grid}<path class="trend-area" d="${area}"/><path class="trend-line" d="${line}"/>${dots}</svg>`;
 }
 function renderMarket(){
   const code=state.active, meta=state.payload.markets[code], rows=state.payload.data[code]||[], p=latest(rows), delta=change(rows);
   if(!p){$('#market-view').innerHTML='<div class="error-box"><b>尚无该市场数据</b><span>请运行每日更新任务后刷新。</span></div>';return;}
   const cls=delta.value>0?'up':delta.value<0?'down':'flat', arrow=delta.value>0?'▲':delta.value<0?'▼':'—';
-  const source=p.source_name, note=p.metadata?.fallback?'Investing.com 当前拒绝服务器访问，已自动切换备用行情源。':'';
   $('#market-view').innerHTML=`<article class="price-card" style="--market-color:${meta.color}">
     <div class="card-top"><div class="flag-name"><span class="flag">${flags[code]}</span><div><h2>${meta.name}</h2><p>${meta.grade} · 最近${rows.length}个交易日</p></div></div><span class="change ${cls}">${arrow} ${Math.abs(delta.pct).toFixed(2)}%</span></div>
     <div class="main-price"><strong>${money(p.cny_per_ton)}</strong><span>人民币元 / 吨</span></div>
     <div class="native-line"><span>${nativeLabels[code]} <b>${native(p.native_price)} ${escapeHtml(p.native_unit)}</b></span></div>
-    <div class="chart-wrap">${chartSvg(rows,meta.color)}</div><div class="date-row">${rows.map(r=>`<span>${shortDate(r.date)}</span>`).join('')}</div>
-    ${note?`<p class="warning">${note}</p>`:''}
-    <div class="source-row"><span>汇率日期 ${p.metadata?.fx_date||p.date}</span><a href="${escapeHtml(p.source_url)}" target="_blank" rel="noopener">${escapeHtml(source)} ↗</a></div>
+    <div class="chart-wrap">${chartSvg(rows,meta.color,p.native_unit)}</div><div class="date-row">${rows.map(r=>`<span>${shortDate(r.date)}</span>`).join('')}</div>
+    <div class="source-row"><span>汇率日期 ${p.metadata?.fx_date||p.date}</span></div>
   </article>`;
 }
 function renderComparison(){
