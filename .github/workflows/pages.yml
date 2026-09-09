@@ -38,7 +38,7 @@ jobs:
           cache: pip
       - name: Install Chinese fonts
         run: |
-          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk
       - name: Install dependencies
