@@ -107,3 +107,15 @@ def test_subject_says_yesterday_when_focus_quote_is_one_day_old():
     article = build_daily_email(data, as_of=date(2026, 8, 27))
     assert article.subject.startswith("昨日")
     assert "昨日价格" in article.plain
+
+
+def test_four_market_summary_uses_latest_trading_day_change_not_seven_day_change():
+    data = payload()
+    data["data"]["china"] = trend_rows(
+        "china", [100, 200, 180], [100, 200, 180], "CNY/吨"
+    )
+    article = build_daily_email(data, as_of=date(2026, 8, 23))
+    assert "中国3128B：180.00 CNY/吨；人民币 180 元/吨；当日下跌10.00%" in article.plain
+    assert "<th>当日涨跌</th>" in article.html
+    assert "7日走势" not in article.plain
+    assert "7日走势" not in article.html

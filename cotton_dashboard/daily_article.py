@@ -30,9 +30,9 @@ class Topic:
 
 
 def _change(rows: list[dict]) -> float:
-    if len(rows) < 2 or not rows[0].get("cny_per_ton"):
+    if len(rows) < 2 or not rows[-2].get("native_price"):
         return 0.0
-    return (rows[-1]["cny_per_ton"] / rows[0]["cny_per_ton"] - 1) * 100
+    return (rows[-1]["native_price"] / rows[-2]["native_price"] - 1) * 100
 
 
 def _direction(value: float) -> str:
@@ -129,7 +129,7 @@ def build_daily_email(payload: dict, as_of: date | None = None) -> DailyEmail:
             continue
         latest = data[key][-1]
         change = _change(data[key])
-        lines.append(f"- {LABELS[key]}：{_price(latest)}；人民币 {latest['cny_per_ton']:,.0f} 元/吨；7日{_direction(change)}{abs(change):.2f}%")
+        lines.append(f"- {LABELS[key]}：{_price(latest)}；人民币 {latest['cny_per_ton']:,.0f} 元/吨；当日{_direction(change)}{abs(change):.2f}%")
         rows.append(
             "<tr>"
             f"<td>{escape(LABELS[key])}</td>"
@@ -144,7 +144,7 @@ def build_daily_email(payload: dict, as_of: date | None = None) -> DailyEmail:
     html = f"""<!doctype html><html><body style="margin:0;background:#f4efe5;color:#173f35;font-family:Arial,'Microsoft YaHei',sans-serif">
 <div style="max-width:680px;margin:auto;padding:24px"><h1 style="font-size:25px">{escape(subject)}</h1>
 <h2>今日主题</h2>{focus_card}
-<h2>四国最新报价</h2><table style="width:100%;border-collapse:collapse;background:#fff"><tr><th>市场</th><th>原始价</th><th>人民币参考</th><th>7日走势</th></tr>{''.join(rows)}</table>
+<h2>四国最新报价</h2><table style="width:100%;border-collapse:collapse;background:#fff"><tr><th>市场</th><th>原始价</th><th>人民币参考</th><th>当日涨跌</th></tr>{''.join(rows)}</table>
 <p style="text-align:center;margin:28px;font-weight:bold;color:#173f35">点击底部「阅读原文」浏览详细内容</p>
 <p style="font-size:12px;color:#65756f">说明：休市日使用最近一个有报价的交易日，并在正文标注报价日期。</p>
 <p style="font-size:12px;color:#65756f">{escape(payload.get('disclaimer', '价格仅供市场参考，不构成交易建议。'))}</p></div></body></html>"""
